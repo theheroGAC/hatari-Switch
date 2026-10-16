@@ -163,6 +163,17 @@ endif(ZLIB_FOUND)
 find_package(LibArchive)
 if(LibArchive_FOUND)
 	set(HAVE_LIBARCHIVE 1)
+	if(HATARI_SWITCH)
+		# devkitPro's static libarchive is built with the optional compression
+		# libraries, but its CMake config only reports the archive library
+		# itself, so add the ones it needs
+		foreach(_dep bz2 lzma lz4 zstd expat)
+			find_library(LIBARCHIVE_DEP_${_dep} NAMES ${_dep})
+			if(LIBARCHIVE_DEP_${_dep})
+				list(APPEND LibArchive_LIBRARIES ${LIBARCHIVE_DEP_${_dep}})
+			endif()
+		endforeach()
+	endif(HATARI_SWITCH)
 endif(LibArchive_FOUND)
 
 find_package(PNG)
@@ -429,6 +440,44 @@ configure_file(${CMAKE_SOURCE_DIR}/cmake/config-cmake.h
 		${CMAKE_BINARY_DIR}/config.h)
 
 add_subdirectory(src)
+
+# #####################################################
+# Nintendo Switch homebrew package (icon + NACP + RomFS):
+# #####################################################
+
+if(HATARI_SWITCH)
+	set(HATARI_APP_NAME "Hatari Switch")
+	set(HATARI_APP_VERSION "1.00")
+	set(HATARI_TITLE_ID "0100484154415249")
+	set(HATARI_APP_AUTHOR "theheroGAC")
+	add_custom_command(OUTPUT ${CMAKE_BINARY_DIR}/hatari.nacp
+		COMMAND ${NX_NACPTOOL_EXE} --create "${HATARI_APP_NAME}" "${HATARI_APP_AUTHOR}"
+		        "${HATARI_APP_VERSION}" ${CMAKE_BINARY_DIR}/hatari.nacp
+		        --titleid=${HATARI_TITLE_ID}
+		COMMENT "Generating hatari.nacp (${HATARI_APP_NAME} ${HATARI_APP_VERSION})"
+		VERBATIM)
+
+	# Data files Hatari reads at runtime, embedded in the NRO as RomFS
+	set(HATARI_ROMFS_DIR ${CMAKE_BINARY_DIR}/romfs)
+	set(HATARI_ROMFS_DATA ${HATARI_ROMFS_DIR}/share/hatari/hatari-icon.bmp)
+	file(MAKE_DIRECTORY ${HATARI_ROMFS_DIR}/share/hatari)
+	add_custom_command(OUTPUT ${HATARI_ROMFS_DATA}
+		COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_SOURCE_DIR}/src/hatari-icon.bmp
+		        ${HATARI_ROMFS_DATA}
+		DEPENDS ${CMAKE_SOURCE_DIR}/src/hatari-icon.bmp
+		COMMENT "Collecting the RomFS data files"
+		VERBATIM)
+	add_custom_target(hatari_romfs DEPENDS ${HATARI_ROMFS_DATA})
+
+	nx_create_nro(hatari_nro
+		TARGET hatari
+		OUTPUT ${CMAKE_BINARY_DIR}/hatari.nro
+		ICON ${CMAKE_SOURCE_DIR}/share/icons/hicolor/256x256/apps/hatari.png
+		NACP ${CMAKE_BINARY_DIR}/hatari.nacp
+		ROMFS ${HATARI_ROMFS_DIR})
+	add_dependencies(hatari_nro hatari_romfs)
+endif(HATARI_SWITCH)
+
 add_subdirectory(doc)
 add_subdirectory(tools)
 

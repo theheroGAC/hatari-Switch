@@ -40,6 +40,9 @@ const char Screen_fileid[] = "Hatari screen.c";
 #include "version.h"
 #include "video.h"
 #include "videl.h"
+#if defined(__SWITCH__)
+#include "vkbd.h"
+#endif
 
 #define DEBUG 0
 
@@ -70,11 +73,21 @@ void Screen_UpdateRects(SDL_Surface *screen, int numrects, SDL_Rect *rects)
 {
 	if (bUseSdlRenderer)
 	{
+#if defined(__SWITCH__)
+		SDL_RenderSetLogicalSize(sdlRenderer, screen->w, screen->h);
+#endif
 		SDL_UpdateTexture(sdlTexture, NULL, screen->pixels, screen->pitch);
 		/* Need to clear the renderer context for certain accelerated cards */
 		if (!bIsSoftwareRenderer)
 			SDL_RenderClear(sdlRenderer);
 		SDL_RenderCopy(sdlRenderer, sdlTexture, NULL, NULL);
+#if defined(__SWITCH__)
+		if (VKBD_IsOpen())
+		{
+			SDL_RenderSetLogicalSize(sdlRenderer, 1280, 720);
+			VKBD_Render(sdlRenderer);
+		}
+#endif
 		SDL_RenderPresent(sdlRenderer);
 	}
 	else
@@ -413,7 +426,11 @@ bool Screen_SetVideoSize(int width, int height, bool bForceChange)
 		Screen_ReparentWindow(width, height, bInFullScreen);
 	}
 
+#if defined(__SWITCH__)
+	bUseSdlRenderer = true;
+#else
 	bUseSdlRenderer = ConfigureParams.Screen.bUseSdlRenderer && !bUseDummyMode;
+#endif
 
 	/* SDL Video attributes: */
 	win_width = width;
@@ -732,6 +749,9 @@ void Screen_Init(void)
  */
 void Screen_UnInit(void)
 {
+#if defined(__SWITCH__)
+	VKBD_Quit();
+#endif
 	SDLGui_UnInit();
 
 	Screen_FreeSDL2Resources();
@@ -803,6 +823,9 @@ void Screen_EnterFullScreen(void)
  */
 void Screen_ReturnFromFullScreen(void)
 {
+#if defined(__SWITCH__)
+	return;
+#endif
 	bool bWasRunning;
 
 	if (bInFullScreen)
@@ -935,7 +958,11 @@ bool Screen_Draw(bool bForceFlip)
 	sbar_rect = Statusbar_Update(sdlscrn, false);
 
 	/* And show to user */
+#if defined(__SWITCH__)
+	if (screen_changed || bForceFlip || sbar_rect || VKBD_IsOpen() || VKBD_NeedsRedraw())
+#else
 	if (screen_changed || bForceFlip || sbar_rect)
+#endif
 	{
 		Screen_Blit(sbar_rect);
 	}

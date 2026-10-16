@@ -21,7 +21,10 @@ const char Paths_fileid[] = "Hatari paths.c";
 #define mkdir(name,mode) mkdir(name)
 #endif  /* WIN32 */
 
-#if defined(__APPLE__)
+#if defined(__SWITCH__)
+	/* HOME is set to sdmc:/switch/hatari by the Switch entry point. */
+	#define HATARI_HOME_DIR ""
+#elif defined(__APPLE__)
 	#define HATARI_HOME_DIR "Library/Application Support/Hatari"
 #elif defined(WIN32)
 	#define HATARI_HOME_DIR "AppData\\Local\\Hatari"
@@ -151,7 +154,11 @@ static char *Paths_InitExecDir(const char *argv0)
 	 * and finally analyze the PATH variable if it has not been found yet. */
 	psExecDir[0] = '\0';
 
-#if defined(__linux__)
+#if defined(__SWITCH__)
+	/* The Switch frontend always runs from its application directory,
+	 * which it chdir()s into before calling Paths_Init(). */
+	Str_Copy(psExecDir, sWorkingDir, FILENAME_MAX);
+#elif defined(__linux__)
 	{
 		int i;
 		/* On Linux, we can analyze the symlink /proc/self/exe */
@@ -315,6 +322,11 @@ void Paths_Init(const char *argv0)
 
 	/* Now create the datadir path name from the bindir path name: */
 	sDataDir = Str_Alloc(FILENAME_MAX);
+#if defined(__SWITCH__)
+	/* Hatari's data files are embedded in the NRO and reachable via RomFS,
+	 * their path does not depend on the place the NRO was started from. */
+	strcpy(sDataDir, BIN2DATADIR);
+#else
 	if (psExecDir && strlen(psExecDir) > 0)
 	{
 		sprintf(sDataDir, "%s%c%s", psExecDir, PATHSEP, BIN2DATADIR);
@@ -325,6 +337,7 @@ void Paths_Init(const char *argv0)
 		 * to current working directory... */
 		strcpy(sDataDir, BIN2DATADIR);
 	}
+#endif
 
 	/* And finally make a proper absolute path out of datadir: */
 	File_MakeAbsoluteName(sDataDir);

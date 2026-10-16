@@ -136,6 +136,12 @@ static bool File_IsRootFileName(const char *pszFileName)
 		return true;
 #endif
 
+#if defined(__SWITCH__)
+	if (strncmp(pszFileName, "romfs:/", 7) == 0 ||
+	    strncmp(pszFileName, "sdmc:/", 6) == 0)
+		return true;
+#endif
+
 #ifdef GEKKO
 	if (strlen(pszFileName) > 2 && pszFileName[2] == ':')	/* sd: */
 		return true;

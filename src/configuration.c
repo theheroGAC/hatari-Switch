@@ -609,6 +609,13 @@ void Configuration_SetDefault(void)
 	ConfigureParams.Log.bConfirmQuit = true;
 	ConfigureParams.Log.bNatFeats = false;
 	ConfigureParams.Log.bConsoleWindow = false;
+#ifdef __SWITCH__
+	/* The Switch console is closed when SDL takes over the screen, so keep
+	 * Hatari's log in the application directory (see README-SWITCH.md) */
+	File_MakePathBuf(ConfigureParams.Log.sLogFileName,
+	                 sizeof(ConfigureParams.Log.sLogFileName),
+	                 psHomeDir, "hatari", "log");
+#endif
 
 	/* Set defaults for debugger */
 	ConfigureParams.Debugger.nNumberBase = 10;
@@ -710,6 +717,15 @@ void Configuration_SetDefault(void)
 		ConfigureParams.Joysticks.Joy[1].bEnableJumpOnFire2 = false;
 	}
 
+#ifdef __SWITCH__
+	/* The Switch frontend translates the controller into the default cursor
+	 * keys and RCTRL, so always emulate the ST joystick through the keyboard
+	 * (see src/sdl/switch_support.c) */
+	ConfigureParams.Joysticks.Joy[0].nJoystickMode = JOYSTICK_DISABLED;
+	ConfigureParams.Joysticks.Joy[1].nJoystickMode = JOYSTICK_KEYBOARD;
+	ConfigureParams.Joysticks.Joy[1].bEnableJumpOnFire2 = false;
+#endif
+
 	/* Set defaults for Keyboard */
 	ConfigureParams.Keyboard.bFastForwardKeyRepeat = true;
 	ConfigureParams.Keyboard.nKeymapType = KEYMAP_SYMBOLIC;
@@ -794,6 +810,11 @@ void Configuration_SetDefault(void)
 	ConfigureParams.Screen.ScreenShotFormat = SCREEN_SNAPSHOT_BMP;
 #endif
 	ConfigureParams.Screen.szScreenShotDir[0] = '\0';
+#ifdef __SWITCH__
+	/* Handheld/console output is always fullscreen */
+	ConfigureParams.Screen.bFullScreen = true;
+	ConfigureParams.Screen.bResizable = false;
+#endif
 
 	/* Set defaults for Sound */
 	ConfigureParams.Sound.bEnableMicrophone = true;
@@ -811,6 +832,12 @@ void Configuration_SetDefault(void)
 	                 sizeof(ConfigureParams.Rom.szTosImageFileName),
 	                 Paths_GetDataDir(), "tos", "img");
 	ConfigureParams.Rom.bPatchTos = true;
+#ifdef __SWITCH__
+	/* TOS is not shipped with the NRO, so read it from the app directory */
+	File_MakePathBuf(ConfigureParams.Rom.szTosImageFileName,
+	                 sizeof(ConfigureParams.Rom.szTosImageFileName),
+	                 psHomeDir, "tos", "img");
+#endif
 	strcpy(ConfigureParams.Rom.szCartridgeImageFileName, "");
 
 	/* Set defaults for Lilo */
@@ -859,7 +886,7 @@ void Configuration_SetDefault(void)
 	                 Configuration_GetScreenShotDir(),
 			 "hatari", "avi");
 
-	/* Initialize the configuration file name */
+	/* The Switch port sets HOME to its writable sdmc:/switch/hatari directory. */
 	if (File_MakePathBuf(sConfigFileName, sizeof(sConfigFileName),
 	                     psHomeDir, "hatari", "cfg"))
 	{

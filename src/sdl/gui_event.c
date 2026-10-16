@@ -26,6 +26,9 @@
 #include "shortcut.h"
 #include "statusbar_sdl.h"
 #include "video.h"
+#ifdef __SWITCH__
+#include "switch_support.h"
+#endif
 
 
 static bool bIgnoreNextMouseMotion = false; /* Ignore next mouse motion (needed after SDL_WarpMouse) */
@@ -125,6 +128,11 @@ void GuiEvent_EventHandler(void)
 	int remotepause;
 	int win_width, win_height;
 	static int mleave_x = -1, mleave_y = -1;
+
+#ifdef __SWITCH__
+	/* Turn the pad state into SDL input events for this round */
+	HatariSwitch_PollControls();
+#endif
 
 	do
 	{

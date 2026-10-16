@@ -44,3 +44,8 @@ Debug/*
 .cproject
 .project
 .settings/
+
+# Nintendo Switch homebrew artifacts
+build-switch/
+hatari.nro
+release/

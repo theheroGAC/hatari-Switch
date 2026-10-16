@@ -29,7 +29,13 @@ const char DlgKeyboard_fileid[] = "Hatari dlgKeyboard.c";
 #define DLGKEY_SCNOMODVAL 20
 #define DLGKEY_SCNOMODDEF 21
 #define DLGKEY_KEYREPEAT 22
+#if defined(__SWITCH__)
+#include "vkbd.h"
+#define DLGKEY_VKBD      23
+#define DLGKEY_EXIT      25
+#else
 #define DLGKEY_EXIT      23
+#endif
 
 static char sc_modval[16];
 static char sc_nomodval[16];
@@ -37,7 +43,11 @@ static char sc_nomodval[16];
 /* The keyboard dialog: */
 static SGOBJ keyboarddlg[] =
 {
+#if defined(__SWITCH__)
+	{ SGBOX, 0, 0, 0,0, 46,26, NULL },
+#else
 	{ SGBOX, 0, 0, 0,0, 46,24, NULL },
+#endif
 	{ SGTEXT, 0, 0, 16,1, 14,1, "Keyboard setup" },
 
 	{ SGBOX, 0, 0, 1,3, 44,7, NULL },
@@ -63,7 +73,13 @@ static SGOBJ keyboarddlg[] =
 	{ SGBUTTON, 0, 0, 36,17, 8,1, "D_efine" },
 
 	{ SGCHECKBOX, 0, 0,  2,20, 41,1, "Use key _repeat in fast forward mode" },
+#if defined(__SWITCH__)
+	{ SGBUTTON, 0, 0, 2,22, 23,1, "Open Virtual Keyboard" },
+	{ SGTEXT, 0, 0, 27,22, 17,1, "(Shortcut: [-])" },
+	{ SGBUTTON, SG_DEFAULT, 0, 13,24, 20,1, "Back to main menu" },
+#else
 	{ SGBUTTON, SG_DEFAULT, 0, 13,22, 20,1, "Back to main menu" },
+#endif
 	{ SGSTOP, 0, 0, 0,0, 0,0, NULL }
 };
 
@@ -281,6 +297,12 @@ void Dialog_KeyboardDlg(void)
 			DlgKbd_DefineShortcutKey(cur_sc, false);
 			DlgKbd_RefreshShortcuts(cur_sc);
 			break;
+#if defined(__SWITCH__)
+		 case DLGKEY_VKBD:
+			VKBD_Toggle();
+			but = DLGKEY_EXIT;
+			break;
+#endif
 		}
 	}
 	while (but != DLGKEY_EXIT && but != SDLGUI_QUIT

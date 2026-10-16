@@ -1316,8 +1316,24 @@ int SDLGui_DoDialogExt(SGOBJ *dlg, bool (*isEventOut)(SDL_EventType), SDL_Event 
 		}
 	}
 
+	bool ignore_first_joybutton = false;
 	if (JoyUI_NumJoysticks() > 0)
+	{
 		joy = SDL_JoystickOpen(0);
+		if (joy)
+		{
+			int nButtons = SDL_JoystickNumButtons(joy);
+			int bidx;
+			for (bidx = 0; bidx < nButtons; bidx++)
+			{
+				if (SDL_JoystickGetButton(joy, bidx))
+				{
+					ignore_first_joybutton = true;
+					break;
+				}
+			}
+		}
+	}
 
 	Dprintf(("ENTER - obj: %d, old: %d, ret: %d\n", obj, oldbutton, retbutton));
 
@@ -1436,7 +1452,24 @@ int SDLGui_DoDialogExt(SGOBJ *dlg, bool (*isEventOut)(SDL_EventType), SDL_Event 
 				break;
 
 			 case SDL_JOYBUTTONDOWN:
+				if (ignore_first_joybutton)
+					break;
+#if defined(__SWITCH__)
+				if (sdlEvent.jbutton.button == 0)
+				{
+					retbutton = SDLGui_HandleSelection(dlg, focused, focused);
+				}
+				else if (sdlEvent.jbutton.button == 1)
+				{
+					retbutton = SDLGui_SearchFlags(dlg, SG_CANCEL);
+				}
+#else
 				retbutton = SDLGui_HandleSelection(dlg, focused, focused);
+#endif
+				break;
+
+			 case SDL_JOYBUTTONUP:
+				ignore_first_joybutton = false;
 				break;
 
 			 case SDL_JOYBALLMOTION:

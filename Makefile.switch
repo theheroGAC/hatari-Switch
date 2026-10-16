@@ -1,0 +1,79 @@
+# Hatari for Nintendo Switch homebrew (devkitA64 + libnx + devkitPro SDL2).
+#
+# Build from the devkitPro MSYS2 shell ("MSYS2 MSYS"):
+#
+#   make -f Makefile.switch -j8
+#
+# It configures and builds Hatari with devkitPro's CMake toolchain (see
+# cmake/toolchain-switch.cmake), which also packages the .nro with its icon,
+# NACP metadata and RomFS data, and copies the result to ./hatari.nro.
+#
+# A host C compiler is needed in addition to devkitA64: two small host
+# programs (build68k and gencpu) generate the CPU emulator sources. If "cc"
+# is not in $PATH, the usual MSYS2/mingw-w64 locations are searched.
+
+BUILD     := build-switch
+TARGET    := hatari.nro
+NRO       := $(BUILD)/cmake/hatari.nro
+JOBS      ?= 8
+# The generated CPU emulator sources need much more memory per compiler
+# process than the rest of Hatari, so they are built with less parallelism
+CPU_JOBS  ?= 2
+CMAKE     ?= cmake
+
+# devkitPro's toolchain and specs file read this from the environment
+DEVKITPRO ?= /opt/devkitpro
+export DEVKITPRO
+
+# The native (Windows) compiler needs a temporary directory it can write to,
+# and it must have free space, so use one inside the build tree instead of the
+# default one on the (possibly full) system drive. Native programs need the
+# Windows form of the path, msys2 programs the POSIX one.
+TMP_POSIX := $(CURDIR)/$(BUILD)/tmp
+TMP_WIN   := $(shell pwd -W 2>/dev/null || echo '$(CURDIR)')/$(BUILD)/tmp
+export TMPDIR := $(TMP_POSIX)
+export TMP    := $(TMP_WIN)
+export TEMP   := $(TMP_WIN)
+
+HOSTCC_DIRS := /c/msys64/mingw64/bin /c/msys64/ucrt64/bin /c/msys64/clang64/bin \
+               /mingw64/bin /ucrt64/bin /clang64/bin /usr/bin
+HOSTCC_DIR  := $(strip $(if $(shell command -v cc 2>/dev/null),,\
+                 $(firstword $(foreach d,$(HOSTCC_DIRS),$(if $(wildcard $(d)/cc*),$(d),)))))
+export PATH := $(PATH)$(if $(HOSTCC_DIR),:$(HOSTCC_DIR),)
+
+.PHONY: all build configure package clean
+
+all: $(TARGET)
+
+$(BUILD)/tmp:
+	mkdir -p $@
+
+$(BUILD)/cmake/CMakeCache.txt: CMakeLists.txt cmake/toolchain-switch.cmake | $(BUILD)/tmp
+	@command -v cc >/dev/null 2>&1 || { \
+	  echo "ERROR: no host C compiler (cc) found in PATH."; \
+	  echo "       It is needed to generate the CPU emulator sources,"; \
+	  echo "       e.g. pacman -S mingw-w64-x86_64-gcc"; \
+	  exit 1; }
+	$(CMAKE) -S . -B $(BUILD)/cmake \
+	  -DCMAKE_TOOLCHAIN_FILE=$(CURDIR)/cmake/toolchain-switch.cmake \
+	  -DCMAKE_BUILD_TYPE=Release -DENABLE_SDL3=OFF -DENABLE_DSP_EMU=OFF
+
+configure: $(BUILD)/cmake/CMakeCache.txt
+
+# Always hand the build over to cmake: it knows the real source dependencies
+# (make only sees the CMakeCache.txt, which does not change when a source file
+# is edited)
+build: configure | $(BUILD)/tmp
+	$(CMAKE) --build $(BUILD)/cmake --target UaeCpu --parallel $(CPU_JOBS)
+	$(CMAKE) --build $(BUILD)/cmake --parallel $(JOBS)
+
+$(TARGET): build
+	cp $(NRO) $@
+	@echo
+	@echo "Built $@ ($$(du -h $@ | cut -f1)) - copy it to sdmc:/switch/hatari/"
+	@echo "See README-SWITCH.md for the SD card layout and the controls."
+
+package: $(TARGET)
+
+clean:
+	rm -rf $(BUILD) $(TARGET)

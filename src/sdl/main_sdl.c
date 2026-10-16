@@ -27,6 +27,10 @@
 #include "screen_sdl.h"
 #include "utils.h"
 
+#ifdef __SWITCH__
+#include "switch_support.h"
+#endif
+
 #ifdef WIN32
 #include "../gui-win/opencon.h"
 #endif
@@ -99,6 +103,9 @@ void Main_ErrorExit(const char *msg1, const char *msg2, int errval)
 			fprintf(stderr, "ERROR: %s!\n", msg1);
 	}
 
+#ifdef __SWITCH__
+	HatariSwitch_Cleanup();
+#endif
 	SDL_Quit();
 
 #ifdef WIN32
@@ -116,6 +123,11 @@ void Main_ErrorExit(const char *msg1, const char *msg2, int errval)
  */
 int main(int argc, char *argv[])
 {
+#ifdef __SWITCH__
+	/* Setup the writable app directory, RomFS and pad before anything else */
+	HatariSwitch_PreInit();
+#endif
+
 	/* Generate random seed */
 	Hatari_srand(time(NULL));
 
@@ -128,6 +140,10 @@ int main(int argc, char *argv[])
 	/* Run emulation */
 	Main_UnPauseEmulation();
 	M68000_Start();                 /* Start emulation */
+
+#ifdef __SWITCH__
+	HatariSwitch_Cleanup();
+#endif
 
 	Main_UnInit();
 

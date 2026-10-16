@@ -37,6 +37,12 @@ const char Gemdos_fileid[] = "Hatari gemdos.c";
 #endif
 #include <stddef.h>
 #include <time.h>
+#if defined(__SWITCH__) && !HAVE_UTIME_H && !HAVE_SYS_UTIME_H
+/* devkitA64's newlib does provide <sys/utime.h>, but that header needs
+ * <time.h> (for time_t) to be included first, which is why CMake's header
+ * checks report it as missing. Include it here after <time.h>. */
+#include <sys/utime.h>
+#endif
 #include <ctype.h>
 #include <unistd.h>
 #include <errno.h>
